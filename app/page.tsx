@@ -1,43 +1,63 @@
 "use client";
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+const {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} = require("@google/generative-ai");
 
-const Page = () => {
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+export default function ClientPageRoot() {
+  const [story, setStory] = useState(''); // State to hold the story
+  const [loading, setLoading] = useState(true); // State to handle loading state
+
   useEffect(() => {
-    const runGenerativeAI = async () => {
-      const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
-      const apiKey = process.env.GEMINI_API_KEY;
+    if (typeof window !== 'undefined') {
+      // Client-only code
       const genAI = new GoogleGenerativeAI(apiKey);
-  
+
       const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: "gemini-1.5-flash",
       });
-  
+
       const generationConfig = {
         temperature: 1,
         topP: 0.95,
         topK: 64,
         maxOutputTokens: 8192,
-        responseMimeType: 'text/plain',
+        responseMimeType: "text/plain",
       };
-  
-      const chatSession = model.startChat({
-        generationConfig,
-        history: [],
-      });
-  
-      const result = await chatSession.sendMessage('one line of a zen story');
-      console.log(result.response.text());
-    };
 
-    runGenerativeAI();
+      async function run() {
+        try {
+          const chatSession = model.startChat({
+            generationConfig,
+            history: [],
+          });
+
+          const result = await chatSession.sendMessage("write a 200 words zen story");
+          const storyText = await result.response.text();
+          setStory(storyText); // Update the state with the generated story
+          setLoading(false); // Set loading to false once the story is fetched
+        } catch (error) {
+          console.error("Error generating story:", error);
+          setLoading(false); // Even on error, stop loading state
+        }
+      }
+
+      run();
+    }
   }, []);
 
   return (
     <div>
-      <h1>Generative AI Page</h1>
-      <p>Check the console for AI output.</p>
+      <h1>Client AI Page</h1>
+      {loading ? (
+        <p>Generating story...</p> // Show loading message while fetching
+      ) : (
+        <p>{story}</p> // Display the generated story when ready
+      )}
     </div>
   );
-};
-
-export default Page;
+}
